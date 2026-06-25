@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <?!= include('Dashboard.css'); ?>
+</head>
+<body>
+  <!-- boot settings injected from server -->
+  <script>
+    window.BOOT = <?!= JSON.stringify(bootSettings) ?>;
+  </script>
+
+  <!-- Loading overlay -->
+  <div id="boot-loader" class="boot-loader">
+    <div class="spinner-ring"></div>
+    <div class="boot-text">Loading dashboard…</div>
+  </div>
+
+  <div class="app" id="app">
+    <!-- Top bar -->
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="brand-logo" id="brandLogo"><span class="material-icons-round">insights</span></div>
+        <div>
+          <div class="brand-name" id="brandName">Social Media Audit</div>
+          <div class="brand-sub">Enterprise Dashboard</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="status-pill" id="auditStatus"><span class="dot"></span><span id="auditStatusText">Idle</span></div>
+        <div class="updated" id="lastUpdated">Last updated: —</div>
+        <button class="btn ghost" id="refreshBtn" title="Refresh now">
+          <span class="material-icons-round spin-target" id="refreshIcon">refresh</span>
+        </button>
+        <button class="btn ghost" id="settingsBtn" title="Settings"><span class="material-icons-round">tune</span></button>
+        <button class="btn primary" id="reportBtn"><span class="material-icons-round">summarize</span><span class="btn-label">Report</span></button>
+      </div>
+    </header>
+
+    <!-- Setup banner (schema problems) -->
+    <div id="setupBanner" class="setup-banner hidden"></div>
+
+    <!-- Filters -->
+    <section class="filters glass">
+      <div class="filter">
+        <label>Platform</label>
+        <select id="fPlatform"><option value="all">All Platforms</option></select>
+      </div>
+      <div class="filter">
+        <label>Staff</label>
+        <select id="fStaff"><option value="all">All Staff</option></select>
+      </div>
+      <div class="filter">
+        <label>Date</label>
+        <input type="date" id="fDate">
+      </div>
+      <div class="filter">
+        <label>Status</label>
+        <select id="fStatus">
+          <option value="all">All</option>
+          <option value="audited">Audited</option>
+          <option value="pending">Pending</option>
+        </select>
+      </div>
+      <div class="filter">
+        <label>Sort tables by</label>
+        <select id="fSort">
+          <option value="views">Views</option>
+          <option value="followers">Followers</option>
+          <option value="posts">Posts</option>
+          <option value="recent">Most recent</option>
+        </select>
+      </div>
+      <div class="filter grow">
+        <label>Search account</label>
+        <div class="search-wrap">
+          <span class="material-icons-round">search</span>
+          <input type="text" id="fSearch" placeholder="Search by account, platform, staff…">
+        </div>
+      </div>
+      <button class="btn ghost" id="clearFilters" title="Clear filters"><span class="material-icons-round">filter_alt_off</span></button>
+    </section>
+
+    <!-- KPI grid -->
+    <section class="kpi-grid" id="kpiGrid"></section>
+
+    <!-- Charts -->
+    <section class="chart-grid" id="chartGrid">
+      <div class="card glass span-2">
+        <div class="card-head"><h3>Daily Trend — Posts &amp; Views</h3><span class="material-icons-round">show_chart</span></div>
+        <div class="chart-box"><canvas id="chDailyTrend"></canvas></div>
+      </div>
+      <div class="card glass">
+        <div class="card-head"><h3>Audit Progress</h3><span class="material-icons-round">donut_large</span></div>
+        <div class="chart-box"><canvas id="chAuditProgress"></canvas></div>
+      </div>
+      <div class="card glass">
+        <div class="card-head"><h3>Followers by Platform</h3><span class="material-icons-round">groups</span></div>
+        <div class="chart-box"><canvas id="chFollowersPlatform"></canvas></div>
+      </div>
+      <div class="card glass">
+        <div class="card-head"><h3>Views by Platform</h3><span class="material-icons-round">visibility</span></div>
+        <div class="chart-box"><canvas id="chViewsPlatform"></canvas></div>
+      </div>
+      <div class="card glass">
+        <div class="card-head"><h3>Posts by Platform</h3><span class="material-icons-round">article</span></div>
+        <div class="chart-box"><canvas id="chPostsPlatform"></canvas></div>
+      </div>
+      <div class="card glass span-2">
+        <div class="card-head"><h3>Staff Performance</h3><span class="material-icons-round">badge</span></div>
+        <div class="chart-box"><canvas id="chStaff"></canvas></div>
+      </div>
+      <div class="card glass">
+        <div class="card-head"><h3>Target Achievement</h3><span class="material-icons-round">flag</span></div>
+        <div class="chart-box"><canvas id="chTarget"></canvas></div>
+      </div>
+      <div class="card glass">
+        <div class="card-head"><h3>Top Accounts (Views)</h3><span class="material-icons-round">trending_up</span></div>
+        <div class="chart-box"><canvas id="chTop"></canvas></div>
+      </div>
+      <div class="card glass">
+        <div class="card-head"><h3>Lowest Accounts (Views)</h3><span class="material-icons-round">trending_down</span></div>
+        <div class="chart-box"><canvas id="chLow"></canvas></div>
+      </div>
+      <div class="card glass">
+        <div class="card-head"><h3>Followers Growth</h3><span class="material-icons-round">north_east</span></div>
+        <div class="chart-box"><canvas id="chFollowersGrowth"></canvas></div>
+      </div>
+      <div class="card glass">
+        <div class="card-head"><h3>Views Growth</h3><span class="material-icons-round">stacked_line_chart</span></div>
+        <div class="chart-box"><canvas id="chViewsGrowth"></canvas></div>
+      </div>
+      <div class="card glass span-2">
+        <div class="card-head"><h3>Weekly &amp; Monthly Trend</h3>
+          <div class="seg" id="trendSeg"><button data-g="weekly" class="active">Weekly</button><button data-g="monthly">Monthly</button></div>
+        </div>
+        <div class="chart-box"><canvas id="chWeekMonth"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Tables -->
+    <section class="card glass tables-card">
+      <div class="card-head">
+        <div class="tabs" id="tableTabs">
+          <button data-t="latestAudit" class="active">Latest Audit</button>
+          <button data-t="topAccounts">Top Accounts</button>
+          <button data-t="failedAudits">Failed Audits</button>
+          <button data-t="highestViews">Highest Views</button>
+          <button data-t="lowestViews">Lowest Views</button>
+          <button data-t="missingPosts">Missing Posts</button>
+          <button data-t="inactiveAccounts">Inactive</button>
+          <button data-t="newestPosts">Newest Posts</button>
+          <button data-t="latestFollowers">Latest Followers</button>
+        </div>
+        <div class="table-tools">
+          <div class="search-wrap small"><span class="material-icons-round">search</span><input id="tableSearch" placeholder="Filter table…"></div>
+          <span class="rowcount" id="rowCount"></span>
+        </div>
+      </div>
+      <div class="table-scroll"><table id="dataTable"><thead></thead><tbody></tbody></table></div>
+      <div class="pager">
+        <button class="btn ghost" id="prevPage"><span class="material-icons-round">chevron_left</span></button>
+        <span id="pageInfo">Page 1</span>
+        <button class="btn ghost" id="nextPage"><span class="material-icons-round">chevron_right</span></button>
+      </div>
+    </section>
+
+    <footer class="foot">Social Media Audit Dashboard · data is read-only · <span id="footCounts"></span></footer>
+  </div>
+
+  <!-- Report modal -->
+  <div class="modal-overlay hidden" id="reportModal">
+    <div class="modal glass">
+      <div class="modal-head"><h3>Generate Report</h3><button class="btn ghost" id="closeReport"><span class="material-icons-round">close</span></button></div>
+      <div class="report-types">
+        <button class="rtype active" data-r="daily">Daily</button>
+        <button class="rtype" data-r="weekly">Weekly</button>
+        <button class="rtype" data-r="monthly">Monthly</button>
+        <button class="rtype" data-r="staff">Staff</button>
+        <button class="rtype" data-r="platform">Platform</button>
+      </div>
+      <div class="report-actions">
+        <button class="btn primary" id="downloadPdf"><span class="material-icons-round">picture_as_pdf</span> Download PDF</button>
+        <button class="btn ghost" id="downloadCsv"><span class="material-icons-round">table_view</span> Export CSV</button>
+      </div>
+      <div class="report-preview" id="reportPreview"><div class="muted">Select a report type to preview.</div></div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toast" class="toast hidden"></div>
+
+  <?!= include('Charts.js'); ?>
+  <?!= include('Dashboard.js'); ?>
+</body>
+</html>

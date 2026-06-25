@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <style>
+    :root{--accent:#6366f1;--bg:#0f1424;--card:rgba(255,255,255,.05);--stroke:rgba(255,255,255,.1);--text:#e8ecf6;--muted:#93a0bf}
+    *{box-sizing:border-box}
+    body{font-family:Inter,sans-serif;margin:0;background:linear-gradient(180deg,#0a0e1a,#141a2e);color:var(--text);padding:16px}
+    h2{font-size:16px;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+    .sub{font-size:12px;color:var(--muted);margin-bottom:16px}
+    .group{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px;margin-bottom:12px}
+    .group h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px}
+    label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+    label:first-child{margin-top:0}
+    input,select{width:100%;background:rgba(8,12,24,.7);border:1px solid var(--stroke);color:var(--text);border-radius:10px;padding:9px 11px;font-size:13px;font-family:inherit;outline:none}
+    input:focus,select:focus{border-color:var(--accent)}
+    .row{display:flex;gap:10px}.row > div{flex:1}
+    input[type=color]{height:38px;padding:3px}
+    .btn{width:100%;margin-top:6px;border:none;border-radius:11px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;color:#fff;background:linear-gradient(135deg,#6366f1,#22d3ee)}
+    .btn.sec{background:rgba(255,255,255,.06);border:1px solid var(--stroke);color:var(--text);margin-top:8px}
+    .note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
+    .msg{font-size:12px;margin-top:10px;padding:8px 10px;border-radius:8px;display:none}
+    .msg.ok{display:block;background:rgba(52,211,153,.15);color:#34d399}
+    .msg.err{display:block;background:rgba(251,113,133,.15);color:#fb7185}
+  </style>
+</head>
+<body>
+  <h2><span class="material-icons-round" style="color:var(--accent)">tune</span> Settings</h2>
+  <div class="sub">Configuration is stored per-installation. Source data is never modified.</div>
+
+  <div class="group">
+    <h3>Branding</h3>
+    <label>Company Name</label>
+    <input id="companyName" placeholder="Social Media Audit">
+    <label>Logo URL</label>
+    <input id="logoUrl" placeholder="https://…/logo.png">
+  </div>
+
+  <div class="group">
+    <h3>Appearance</h3>
+    <label>Theme</label>
+    <select id="theme"><option value="dark">Dark</option><option value="midnight">Midnight</option></select>
+    <div class="row">
+      <div><label>Accent</label><input type="color" id="accent" value="#6366f1"></div>
+      <div><label>Accent 2</label><input type="color" id="accent2" value="#22d3ee"></div>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Data &amp; Refresh</h3>
+    <label>Auto Refresh (seconds)</label>
+    <input type="number" id="autoRefreshSeconds" min="15" value="60">
+    <label>Rows per page</label>
+    <input type="number" id="pageSize" min="10" value="25">
+    <label>Spreadsheet ID</label>
+    <input id="spreadsheetId" placeholder="Spreadsheet ID">
+    <div class="note">Changing the Spreadsheet ID re-points the dashboard. Leave as-is to use the default workbook.</div>
+  </div>
+
+  <button class="btn" id="saveBtn">Save Settings</button>
+  <button class="btn sec" id="cacheBtn">Clear Cache &amp; Refresh</button>
+  <div class="msg" id="msg"></div>
+
+  <script>
+    var $ = function(id){ return document.getElementById(id); };
+    function load(){
+      google.script.run.withSuccessHandler(function(s){
+        if(!s || s.ok===false) return;
+        $('companyName').value=s.companyName||''; $('logoUrl').value=s.logoUrl||'';
+        $('theme').value=s.theme||'dark'; $('accent').value=s.accent||'#6366f1'; $('accent2').value=s.accent2||'#22d3ee';
+        $('autoRefreshSeconds').value=s.autoRefreshSeconds||60; $('pageSize').value=s.pageSize||25; $('spreadsheetId').value=s.spreadsheetId||'';
+      }).apiGetSettings();
+    }
+    function show(msg, ok){ var m=$('msg'); m.textContent=msg; m.className='msg '+(ok?'ok':'err'); }
+    $('saveBtn').onclick=function(){
+      var payload={ companyName:$('companyName').value, logoUrl:$('logoUrl').value, theme:$('theme').value,
+        accent:$('accent').value, accent2:$('accent2').value, autoRefreshSeconds:$('autoRefreshSeconds').value,
+        pageSize:$('pageSize').value, spreadsheetId:$('spreadsheetId').value };
+      $('saveBtn').textContent='Saving…';
+      google.script.run.withSuccessHandler(function(r){
+        $('saveBtn').textContent='Save Settings';
+        if(r && r.ok===false) show('Error: '+r.error,false); else show('Saved. Reopen the dashboard to apply.',true);
+      }).withFailureHandler(function(e){ $('saveBtn').textContent='Save Settings'; show(e.message,false); }).apiSaveSettings(payload);
+    };
+    $('cacheBtn').onclick=function(){ google.script.run.withSuccessHandler(function(){ show('Cache cleared.',true); }).apiClearCache(); };
+    load();
+  </script>
+</body>
+</html>

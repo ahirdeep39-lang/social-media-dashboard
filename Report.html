@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <style>
+    :root{--accent:#6366f1;--accent2:#22d3ee;--stroke:rgba(255,255,255,.1);--muted:#93a0bf}
+    *{box-sizing:border-box}
+    body{font-family:Inter,sans-serif;margin:0;background:linear-gradient(180deg,#0a0e1a,#141a2e);color:#e8ecf6;padding:16px}
+    .head{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;margin-bottom:4px}
+    .sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+    .types{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+    .types button{background:rgba(255,255,255,.05);border:1px solid var(--stroke);color:var(--muted);padding:8px 14px;border-radius:10px;cursor:pointer;font-size:13px}
+    .types button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+    .actions{display:flex;gap:8px;margin-bottom:12px}
+    .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--stroke);background:rgba(255,255,255,.05);color:#e8ecf6;padding:9px 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600}
+    .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff}
+    .preview{background:#fff;border-radius:12px;min-height:340px;max-height:62vh;overflow:auto}
+    .ph{padding:30px;color:#64748b;font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="head"><span class="material-icons-round" style="color:var(--accent)">summarize</span> Generate Report</div>
+  <div class="sub">Reports read live data and export as PDF. Source sheets are never changed.</div>
+  <div class="types" id="types">
+    <button data-r="daily" class="active">Daily</button>
+    <button data-r="weekly">Weekly</button>
+    <button data-r="monthly">Monthly</button>
+    <button data-r="staff">Staff</button>
+    <button data-r="platform">Platform</button>
+  </div>
+  <div class="actions">
+    <button class="btn primary" id="pdf"><span class="material-icons-round">picture_as_pdf</span> Download PDF</button>
+    <button class="btn" id="csv"><span class="material-icons-round">table_view</span> Export CSV</button>
+    <button class="btn" id="refresh"><span class="material-icons-round">refresh</span> Refresh Preview</button>
+  </div>
+  <div class="preview" id="preview"><div class="ph">Loading preview…</div></div>
+
+  <script>
+    var type='daily';
+    var $=function(id){return document.getElementById(id);};
+    function preview(){
+      $('preview').innerHTML='<div class="ph">Building preview…</div>';
+      google.script.run.withSuccessHandler(function(r){
+        if(!r||r.ok===false){ $('preview').innerHTML='<div class="ph" style="color:#b91c1c">Error: '+((r&&r.error)||'failed')+'</div>'; return; }
+        $('preview').innerHTML=r.html;
+      }).withFailureHandler(function(e){ $('preview').innerHTML='<div class="ph" style="color:#b91c1c">'+e.message+'</div>'; }).generateReport(type,{});
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('#types button'),function(b){
+      b.onclick=function(){ Array.prototype.forEach.call(document.querySelectorAll('#types button'),function(x){x.classList.remove('active');}); b.classList.add('active'); type=b.getAttribute('data-r'); preview(); };
+    });
+    $('refresh').onclick=preview;
+    function save(b64,name,mime){
+      var bytes=atob(b64),arr=new Uint8Array(bytes.length);
+      for(var i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i);
+      var url=URL.createObjectURL(new Blob([arr],{type:mime})),a=document.createElement('a');
+      a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+    }
+    $('pdf').onclick=function(){ $('pdf').textContent='…';
+      google.script.run.withSuccessHandler(function(r){ $('pdf').innerHTML='<span class="material-icons-round">picture_as_pdf</span> Download PDF';
+        if(r&&r.ok!==false) save(r.base64,r.filename,r.mime); }).exportReportPdf(type,{});
+    };
+    $('csv').onclick=function(){
+      google.script.run.withSuccessHandler(function(r){ if(r&&r.ok!==false) save(r.base64,r.filename,r.mime); }).exportExcelData({});
+    };
+    preview();
+  </script>
+</body>
+</html>
